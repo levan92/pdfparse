@@ -63,7 +63,8 @@ for pdfp in Path(args.pdfdir).rglob('*'):
 sorted_date = sorted(res_dict.keys())
 with open(f'res.csv','w') as f:
     for date in sorted_date:
-        a,b,c,d = res_dict[date]
-        print_str = f'{date:%d/%m/%Y},{a},{b},{c},{d}'
+        outs = [ str(out) for out in res_dict[date] ]
+        outs.insert(0, f'{date:%d/%m/%Y}')
+        print_str = ','.join(outs)
         print(print_str)
         f.write(print_str+'\n')
