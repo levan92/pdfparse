@@ -3,6 +3,8 @@ from pathlib import Path
 
 from pikepdf import Pdf
 
+from config import IDENTIFIER
+
 ap = argparse.ArgumentParser()
 ap.add_argument('pdfdir')
 ap.add_argument('pw')

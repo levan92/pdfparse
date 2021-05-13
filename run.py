@@ -1,14 +1,20 @@
 import argparse
 from pathlib import Path
+import dateutil.parser as dparser
+from collections import defaultdict
 
 import PyPDF2
 from pprint import pprint
+
+from config import IDENTIFIER, TRASH, WANTED
+
+WANTED2CAT = { v:k for k,l in WANTED.items() for v in l }
 
 def is_in_list(key, list_):
     return any([ t in key for t in list_ ])
 
 def split_text(text):
-    dict_ = {}
+    dict_ = defaultdict(int)
     key, val = None, None
     for unit in text.split():
         try:
@@ -22,17 +28,21 @@ def split_text(text):
 
         if key is not None and val is not None:
             if not is_in_list(key, TRASH):
-                dict_[key] = val
-                if not is_in_list(key, WANTED):
-                    print('Not in wanted list: ', key)
+                found_wanted = [ wanted for wanted in WANTED2CAT.keys() if wanted in key ] 
+                assert len(found_wanted) == 1,f'{found_wanted},{key}'
+                found_wanted = found_wanted[0] 
+                dict_[WANTED2CAT[found_wanted]] += val
+                
             key = None
             val = None
-    # pprint(dict_)
-    # import pdb;pdb.set_trace()
+    res = [ dict_[k] for k in sorted(WANTED.keys()) ]
+    return res
 
 ap = argparse.ArgumentParser()
 ap.add_argument('pdfdir')
 args = ap.parse_args()
+
+res_dict = {}
 
 for pdfp in Path(args.pdfdir).rglob('*'):
     if pdfp.suffix in ('.pdf','.PDF') and IDENTIFIER in pdfp.stem:
@@ -41,6 +51,19 @@ for pdfp in Path(args.pdfdir).rglob('*'):
             assert preader.numPages == 1
             page0 = preader.getPage(0)
             pdftext = page0.extractText()
-            split_text(pdftext)
-            # import pdb;pdb.set_trace()
+            try:
+                date = dparser.parse(pdfp.stem, fuzzy = True)
+            except Exception as e:
+                print('Cannot parse date from pdf name', e)
+            date = date.date()
+            date = date.replace(day=1)
+            res = split_text(pdftext)
+            res_dict[date] = res
 
+sorted_date = sorted(res_dict.keys())
+with open(f'res.csv','w') as f:
+    for date in sorted_date:
+        a,b,c,d = res_dict[date]
+        print_str = f'{date:%d/%m/%Y},{a},{b},{c},{d}'
+        print(print_str)
+        f.write(print_str+'\n')
